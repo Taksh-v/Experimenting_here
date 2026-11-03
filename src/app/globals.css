@@ -497,3 +497,159 @@ textarea:focus-visible {
   .result { width: 100%; margin: 0; }
   .resume { border: 0; padding: 0; }
 }
+
+.brand {
+  margin: 0 0 28px;
+  color: #101010;
+  font-size: clamp(2rem, 6vw, 4rem);
+  letter-spacing: -0.05em;
+}
+
+.consent {
+  width: min(560px, calc(100vw - 40px));
+  color: #555;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.turnstile {
+  min-height: 68px;
+}
+
+.paste-fallback {
+  display: grid;
+  gap: 10px;
+  width: min(620px, calc(100vw - 40px));
+}
+
+.privacy-bar {
+  position: sticky;
+  z-index: 20;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #ddd;
+  background: rgba(255, 255, 255, 0.96);
+  padding: 8px 24px;
+  color: #555;
+  font-size: 0.85rem;
+}
+
+.v2-shell {
+  width: min(980px, calc(100vw - 32px));
+  margin: 42px auto 100px;
+}
+
+.stage-head,
+.fact-head,
+.row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.warning {
+  border-left: 4px solid #9a6b00;
+  background: #fff8df;
+  padding: 12px 16px;
+  color: #5f4400;
+}
+
+.fact-list {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.source-review-grid {
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) minmax(420px, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.source-pdf {
+  position: sticky;
+  top: 58px;
+  width: 100%;
+  height: calc(100vh - 82px);
+  border: 1px solid #ccc;
+  background: #eee;
+}
+
+.fact-card {
+  border: 1px solid #d6d6d6;
+  background: white;
+  padding: 20px;
+}
+
+.fact-card.uncertain {
+  border-color: #a66b00;
+}
+
+.fact-card.rejected {
+  opacity: 0.55;
+}
+
+.fact-head span {
+  color: #666;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+}
+
+.original {
+  color: #555;
+  font-size: 0.9rem;
+}
+
+.source-detail blockquote {
+  margin: 10px 0;
+  border-left: 3px solid #111;
+  padding-left: 12px;
+}
+
+.row-actions {
+  justify-content: flex-start;
+  margin-top: 14px;
+}
+
+.row-actions button {
+  border: 1px solid #111;
+  background: white;
+  padding: 7px 12px;
+}
+
+.questions select {
+  width: 100%;
+  border: 1px solid #999;
+  background: white;
+  padding: 11px;
+}
+
+.editor-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.8fr) minmax(500px, 1.2fr);
+  gap: 28px;
+  width: min(1400px, calc(100vw - 32px));
+  margin: 28px auto 100px;
+}
+
+.editor-panel {
+  min-width: 0;
+}
+
+@media (max-width: 950px) {
+  .editor-grid {
+    grid-template-columns: 1fr;
+  }
+  .source-review-grid {
+    grid-template-columns: 1fr;
+  }
+  .source-pdf {
+    position: static;
+    height: 70vh;
+  }
+}

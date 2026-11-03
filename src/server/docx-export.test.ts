@@ -22,6 +22,8 @@ describe("DOCX export", () => {
     expect(documentXml).toContain("Alex Example");
     expect(documentXml).toContain("Platform engineer focused on reliable systems.");
     expect(documentXml).toContain("TypeScript, PostgreSQL");
+    const relationships = strFromU8(files["word/_rels/document.xml.rels"]);
+    expect(relationships).toContain("mailto:alex@example.com");
   });
 });
 

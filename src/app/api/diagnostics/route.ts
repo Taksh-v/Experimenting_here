@@ -9,6 +9,19 @@ export async function GET() {
         process.env.LLAMAPARSE_API_KEY?.trim()
     ),
     groqConfigured: Boolean(process.env.GROQ_API_KEY?.trim()),
+    jobTokensConfigured: Boolean(
+      process.env.JOB_TOKEN_SECRET?.trim() &&
+        process.env.JOB_TOKEN_SECRET.trim().length >= 32
+    ),
+    turnstileConfigured: Boolean(
+      process.env.TURNSTILE_SECRET_KEY?.trim() &&
+        process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim()
+    ),
+    rateLimitConfigured: Boolean(
+      process.env.UPSTASH_REDIS_REST_URL?.trim() &&
+        process.env.UPSTASH_REDIS_REST_TOKEN?.trim() &&
+        process.env.RATE_LIMIT_SALT?.trim()
+    ),
     runtime: process.version
   });
 }

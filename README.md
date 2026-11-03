@@ -1,36 +1,28 @@
 # Evolving Resume
 
-A focused resume ingestion pipeline: upload a PDF or DOCX, extract every
-visible detail, structure it with Groq, ask four factual questions, and render
-an ATS-safe resume.
+A source-grounded resume builder for the Indian hiring market. The v2 workflow
+keeps extraction provenance, requires the user to confirm facts, drafts from
+confirmed evidence only, and renders one ATS-safe resume to PDF or DOCX.
 
 ## Architecture
 
-1. The browser validates the file type and 8 MB limit.
-2. The server verifies the file signature.
-3. PDF uploads require LlamaParse with `LLAMA_CLOUD_API_KEY` (or
-   `LLAMAPARSE_API_KEY`). Native multipart upload submits one job; bounded
-   polling waits for completion, then retrieves Markdown or text from that same
-   job. OCR is enabled. Provider failures stop processing with an error.
-4. DOCX uploads use the local extractor, including headers and footers because
-   resumes often place contact details there. PDFs never silently fall back to
-   their potentially incomplete embedded text layer.
-5. Groq structures the extracted content into a Zod-validated schema. Unknown
-   headings are kept in `additionalSections` rather than discarded.
-6. A deterministic heading parser is used when Groq is not configured.
-7. A fidelity pass compares source lines with the structured result and flags
-   lines that need review.
-8. The browser presents an editable review workspace with project editing,
-   missing-information questions, quality scoring, and a polished resume view.
-9. Refinement can change the headline, skills, summary, and bullets. Employer,
-   job, date, education, certification, and project identity fields are restored
-   from the parsed source after the model call. New unsupported numbers cause
-   the result to be rejected.
-10. The reviewed resume can be exported as DOCX or printed to PDF from the
-    browser.
+1. The browser keeps a versioned session in IndexedDB until the user deletes it.
+2. The server validates the 4 MB / 4-page first-release limits and signatures.
+3. Every PDF runs through LlamaParse as a signed, browser-polled job. Local PDF
+   extraction supplies exact text for comparison and a guarded digital-PDF
+   fallback. DOCX uses the local extractor.
+4. Groq proposes typed facts with verbatim source references. Deterministic
+   checks reject unsupported values; unmapped source text remains visible.
+5. The user confirms, edits, parks, or rejects facts before they can be used.
+6. The product captures an India-market target, asks up to eight evidence
+   questions, and builds a deterministic one- or two-page plan.
+7. Groq drafts cited bullets. Deterministic gates check facts, numbers, dates,
+   strong verbs, outcomes, scope, and form; failed bullets keep source wording.
+8. A structured editor shows sources and checks. One approved Resume object
+   drives DOCX and browser PDF output.
 
-Resume data stays in browser memory for the current flow. There is no database,
-account, portfolio, job tracker, or pricing code.
+There is no account or resume database. Redis contains rate-limit counters only;
+it never contains resume content.
 
 The implementation adopts MIT-licensed architectural ideas from
 [Reactive Resume](https://github.com/reactive-resume/reactive-resume) and
@@ -40,7 +32,7 @@ source identity fields. No AGPL OpenResume source is copied.
 
 ## Run locally
 
-Node.js 24 is required for the worker-free PDF parser used by Vercel.
+Node.js 24 is required.
 
 ```bash
 cp .env.example .env.local
@@ -49,7 +41,8 @@ npm run dev
 ```
 
 Add `LLAMA_CLOUD_API_KEY` and `GROQ_API_KEY` to the server environment.
-They must never use a `NEXT_PUBLIC_` prefix.
+Also configure the signed-job, Turnstile, and Upstash variables listed in
+`.env.example`. Provider credentials must never use a `NEXT_PUBLIC_` prefix.
 
 ## Checks
 

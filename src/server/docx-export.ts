@@ -1,4 +1,12 @@
-import { Document, AlignmentType, Packer, Paragraph, TextRun } from "docx";
+import {
+  Document,
+  AlignmentType,
+  ExternalHyperlink,
+  Packer,
+  Paragraph,
+  TextRun,
+  type ParagraphChild
+} from "docx";
 import type { Resume } from "@/domain/resume";
 
 /**
@@ -24,13 +32,20 @@ function text(value: string, options: { bold?: boolean; size?: number } = {}) {
   });
 }
 
-function paragraph(children: TextRun[], options: { spacingBefore?: number; alignment?: (typeof AlignmentType)[keyof typeof AlignmentType]; bullet?: boolean } = {}) {
+function paragraph(children: ParagraphChild[], options: { spacingBefore?: number; alignment?: (typeof AlignmentType)[keyof typeof AlignmentType]; bullet?: boolean } = {}) {
   return new Paragraph({
     children,
     heading: undefined,
     alignment: options.alignment,
     bullet: options.bullet ? { level: 0 } : undefined,
     spacing: { before: options.spacingBefore ?? 0, after: 40 }
+  });
+}
+
+function link(label: string, target: string): ExternalHyperlink {
+  return new ExternalHyperlink({
+    link: target,
+    children: [new TextRun({ text: label, style: "Hyperlink", size: 22 })]
   });
 }
 
@@ -51,17 +66,28 @@ export function buildResumeDocument(resume: Resume): Document {
       paragraph([text(resume.contact.title, { size: 24 })], { alignment: AlignmentType.CENTER })
     );
   }
-  const contactLine = [
-    resume.contact.email,
-    resume.contact.phone,
-    resume.contact.location,
+  const contacts: ParagraphChild[] = [];
+  const addContact = (child: ParagraphChild) => {
+    if (contacts.length) contacts.push(text(" | "));
+    contacts.push(child);
+  };
+  if (resume.contact.email) addContact(link(resume.contact.email, "mailto:" + resume.contact.email));
+  if (resume.contact.phone) addContact(link(resume.contact.phone, "tel:" + resume.contact.phone.replace(/\s/g, "")));
+  if (resume.contact.location) addContact(text(resume.contact.location));
+  if (resume.contact.linkedin) addContact(link(
     resume.contact.linkedin,
-    resume.contact.website
-  ]
-    .filter(Boolean)
-    .join(" | ");
-  if (contactLine) {
-    children.push(paragraph([text(contactLine)], { alignment: AlignmentType.CENTER }));
+    /^https?:\/\//i.test(resume.contact.linkedin)
+      ? resume.contact.linkedin
+      : "https://" + resume.contact.linkedin
+  ));
+  if (resume.contact.website) addContact(link(
+    resume.contact.website,
+    /^https?:\/\//i.test(resume.contact.website)
+      ? resume.contact.website
+      : "https://" + resume.contact.website
+  ));
+  if (contacts.length) {
+    children.push(paragraph(contacts, { alignment: AlignmentType.CENTER }));
   }
 
   // ---- Summary ------------------------------------------------------------
@@ -120,9 +146,17 @@ export function buildResumeDocument(resume: Resume): Document {
       if (project.description) children.push(paragraph([text(project.description)]));
       const extras = [
         project.technologies.length ? `Technologies: ${project.technologies.join(", ")}` : "",
-        project.url
+        ""
       ].filter(Boolean);
       for (const extra of extras) children.push(paragraph([text(extra)], { bullet: true }));
+      if (project.url) {
+        children.push(paragraph([
+          link(
+            project.url,
+            /^https?:\/\//i.test(project.url) ? project.url : "https://" + project.url
+          )
+        ]));
+      }
     }
   }
 
@@ -136,7 +170,6 @@ export function buildResumeDocument(resume: Resume): Document {
   }
 
   return new Document({
-    creator: "Evolving Resume",
     title: `${name} — Resume`,
     styles: {
       default: {
