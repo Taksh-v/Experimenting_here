@@ -84,7 +84,9 @@ export async function parseResume(file: File): Promise<ParsedResume> {
         "This PDF appears to be image-based and its text layer is incomplete. Enable LlamaParse OCR or upload a text-based PDF."
       );
     }
-    throw new AppError("NOT_A_RESUME", "The file does not appear to be a resume.");
+    warnings.push(
+      "The document did not match common resume headings; preserving extracted content for review."
+    );
   }
 
   let engine: ParseEngine;
@@ -103,7 +105,9 @@ export async function parseResume(file: File): Promise<ParsedResume> {
     resume.contact.name ||
     resume.experience.length ||
     resume.education.length ||
-    resume.skills.length;
+    resume.skills.length ||
+    resume.projects.length ||
+    resume.additionalSections.length;
   if (!meaningful) {
     throw new AppError(
       "UNREADABLE_FILE",
