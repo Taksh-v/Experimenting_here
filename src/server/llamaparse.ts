@@ -1,7 +1,7 @@
 import { AppError } from "./errors";
 import { providerErrorMessage } from "./provider-error";
 
-const BASE_URL = "https://api.cloud.llamaindex.ai/api/parsing";
+const BASE_URL = "https://api.cloud.llamaindex.ai/api/v2/parse";
 
 type Json = Record<string, unknown>;
 
@@ -25,15 +25,32 @@ export async function extractWithLlamaParse(bytes: Uint8Array, filename: string)
     form.append("file", new Blob([bytes.slice().buffer], {
       type: filename.toLowerCase().endsWith(".pdf") ? "application/pdf" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     }), filename);
-    form.append("language", "en");
-    form.append("disable_ocr", "false");
+    form.append("configuration", JSON.stringify({
+      tier: "cost_effective",
+      version: "latest"
+    }));
     const upload = await request("/upload", { method: "POST", body: form });
-    if (typeof upload.id !== "string" || !upload.id) throw new AppError("PROVIDER_ERROR", "LlamaParse did not return a parsing job ID.", 502);
-    const path = "/job/" + encodeURIComponent(upload.id);
+    const uploadJob = upload.job && typeof upload.job === "object" && !Array.isArray(upload.job)
+      ? upload.job as Json
+      : upload;
+    const jobId = typeof uploadJob.id === "string" ? uploadJob.id : "";
+    if (!jobId) throw new AppError("PROVIDER_ERROR", "LlamaParse did not return a parsing job ID.", 502);
+    const path = "/" + encodeURIComponent(jobId);
     for (;;) {
-      const job = await request(path);
-      if (job.status === "SUCCESS") break;
-      if (!["PENDING", "QUEUED", "PROCESSING"].includes(String(job.status))) throw new AppError("PROVIDER_ERROR", "LlamaParse job failed: " + providerErrorMessage(job), 502);
+      const job = await request(path + "?expand=markdown_full,text_full");
+      const status = job.job && typeof job.job === "object" && !Array.isArray(job.job)
+        ? (job.job as Json).status
+        : job.status;
+      if (status === "COMPLETED") {
+        for (const format of ["markdown_full", "text_full", "markdown", "text"]) {
+          const text = typeof job[format] === "string" ? job[format].trim() : "";
+          if (text.length >= 40) return text;
+        }
+        throw new AppError("UNREADABLE_FILE", "LlamaParse completed but extracted too little readable text. Review the document in Llama Cloud.", 422);
+      }
+      if (!["PENDING", "RUNNING", "QUEUED", "PROCESSING"].includes(String(status))) {
+        throw new AppError("PROVIDER_ERROR", "LlamaParse job failed: " + providerErrorMessage(job), 502);
+      }
       await new Promise<void>((resolve, reject) => {
         const abort = () => { clearTimeout(timer); reject(signal.reason); };
         const timer = setTimeout(() => { signal.removeEventListener("abort", abort); resolve(); }, 1000);
@@ -41,13 +58,6 @@ export async function extractWithLlamaParse(bytes: Uint8Array, filename: string)
         else signal.addEventListener("abort", abort, { once: true });
       });
     }
-    // Read alternate output from the same job; never upload twice.
-    for (const format of ["markdown", "text"]) {
-      const result = await request(path + "/result/" + format);
-      const text = typeof result[format] === "string" ? result[format].trim() : "";
-      if (text.length >= 40) return text;
-    }
-    throw new AppError("UNREADABLE_FILE", "LlamaParse completed but extracted too little readable text. Review the document in Llama Cloud.", 422);
   } catch (error) {
     if (error instanceof AppError) throw error;
     if (signal.aborted) throw new AppError("PROVIDER_ERROR", "LlamaParse exceeded the extraction time limit. Please retry.", 504);
