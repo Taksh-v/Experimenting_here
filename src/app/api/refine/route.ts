@@ -15,8 +15,7 @@ export async function POST(request: Request) {
     const value = body as Record<string, unknown>;
     const resume = resumeSchema.parse(value.resume);
     const answers = answersSchema.parse(value.answers);
-    const refined = await refineWithGroq(resume, answers);
-    return NextResponse.json({ resume: refined });
+    return NextResponse.json({ resume: await refineWithGroq(resume, answers) });
   } catch (error) {
     const response = publicError(error);
     return NextResponse.json(response.body, { status: response.status });

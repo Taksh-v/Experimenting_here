@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { AppError, publicError } from "@/server/errors";
 import { parseResume } from "@/server/pipeline";
-import { qualityReport } from "@/server/quality";
 
 export const runtime = "nodejs";
 export const maxDuration = 180;
@@ -17,11 +16,7 @@ export async function POST(request: Request) {
     if (!(file instanceof File)) {
       throw new AppError("INVALID_REQUEST", "Choose a resume to upload.");
     }
-    const parsed = await parseResume(file);
-    return NextResponse.json({
-      ...parsed,
-      quality: qualityReport(parsed.resume, parsed.fidelity, parsed.engine)
-    });
+    return NextResponse.json(await parseResume(file));
   } catch (error) {
     const response = publicError(error);
     return NextResponse.json(response.body, { status: response.status });
