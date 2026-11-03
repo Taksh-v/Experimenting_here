@@ -9,9 +9,9 @@ an ATS-safe resume.
 1. The browser validates the file type and 8 MB limit.
 2. The server verifies the file signature.
 3. PDF uploads require LlamaParse with `LLAMA_CLOUD_API_KEY` (or
-   `LLAMAPARSE_API_KEY`). Native multipart upload submits one v2 Parse job;
-   bounded polling waits for completion, then retrieves expanded Markdown or
-   text from that same job. Provider failures stop processing with an error.
+   `LLAMAPARSE_API_KEY`). Native multipart upload submits one job; bounded
+   polling waits for completion, then retrieves Markdown or text from that same
+   job. OCR is enabled. Provider failures stop processing with an error.
 4. DOCX uploads use the local extractor, including headers and footers because
    resumes often place contact details there. PDFs never silently fall back to
    their potentially incomplete embedded text layer.

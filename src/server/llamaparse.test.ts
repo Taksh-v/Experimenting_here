@@ -12,7 +12,7 @@ function setup(bodies: unknown[]) {
 }
 
 it("uploads the PDF with native multipart then fetches the completed job", async () => {
-  const fetcher = setup([{ id: "job-1", status: "PENDING" }, { job: { status: "COMPLETED" }, markdown_full: text }]);
+  const fetcher = setup([{ id: "job-1" }, { status: "SUCCESS" }, { markdown: text }]);
   await expect(extractWithLlamaParse(new Uint8Array([37, 80, 68, 70]), "resume.pdf")).resolves.toBe(text);
   const [url, options] = fetcher.mock.calls[0];
   expect(url).toMatch(/\/upload$/);
@@ -21,15 +21,15 @@ it("uploads the PDF with native multipart then fetches the completed job", async
   expect(file.name).toBe("resume.pdf");
   expect(file.type).toBe("application/pdf");
   expect(new Uint8Array(await file.arrayBuffer())).toEqual(new Uint8Array([37, 80, 68, 70]));
-  expect(JSON.parse(options.body.get("configuration") as string)).toEqual({ tier: "cost_effective", version: "latest" });
-  expect(fetcher.mock.calls[1][0]).toContain("/job-1?expand=markdown_full,text_full");
+  expect(options.body.get("disable_ocr")).toBe("false");
+  expect(fetcher.mock.calls[2][0]).toContain("/job/job-1/result/markdown");
 });
 
 it("reads alternate output from the same job without another upload", async () => {
-  const fetcher = setup([{ id: "job-2" }, { status: "COMPLETED", markdown_full: "", text_full: text }]);
+  const fetcher = setup([{ id: "job-2" }, { status: "SUCCESS" }, { markdown: "" }, { text }]);
   await expect(extractWithLlamaParse(new Uint8Array([1]), "resume.pdf")).resolves.toBe(text);
   expect(fetcher.mock.calls.filter(([url]) => String(url).endsWith("/upload"))).toHaveLength(1);
-  expect(fetcher.mock.calls[1][0]).toContain("/job-2?expand=markdown_full,text_full");
+  expect(fetcher.mock.calls[3][0]).toContain("/job/job-2/result/text");
 });
 
 it("preserves structured API rejections", async () => {
@@ -39,9 +39,9 @@ it("preserves structured API rejections", async () => {
 });
 
 it("rejects failed jobs and empty output", async () => {
-  setup([{ id: "j" }, { status: "FAILED", error_message: "Document rejected" }]);
+  setup([{ id: "j" }, { status: "ERROR", detail: "Document rejected" }]);
   await expect(extractWithLlamaParse(new Uint8Array([1]), "resume.pdf")).rejects.toThrow("Document rejected");
-  setup([{ id: "j" }, { status: "COMPLETED", markdown_full: "", text_full: "" }]);
+  setup([{ id: "j" }, { status: "SUCCESS" }, { markdown: "" }, { text: "" }]);
   await expect(extractWithLlamaParse(new Uint8Array([1]), "resume.pdf")).rejects.toThrow("too little readable text");
 });
 
