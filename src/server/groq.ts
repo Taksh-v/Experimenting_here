@@ -7,7 +7,7 @@ import {
 } from "@/domain/resume";
 import { AppError } from "./errors";
 
-const MODEL = "llama-3.3-70b-versatile";
+const MODEL = process.env.GROQ_MODEL?.trim() || "llama-3.1-8b-instant";
 
 const RESUME_EDITOR_SYSTEM_PROMPT = `
 You are a senior recruiter, resume writer, and ATS optimization specialist.
