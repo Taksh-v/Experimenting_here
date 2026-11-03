@@ -129,7 +129,8 @@ async function extractPdf(bytes: Uint8Array) {
         if (timeoutId) clearTimeout(timeoutId);
       });
       const pages = items.map((page) => pageText(page));
-      return normalizeExtractedText(pages.join("\n\n"));
+      const extracted = normalizeExtractedText(pages.join("\n\n"));
+      return extracted;
     } finally {
       await document.cleanup();
     }

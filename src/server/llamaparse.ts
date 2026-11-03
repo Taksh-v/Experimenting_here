@@ -1,7 +1,8 @@
 import { LlamaParseReader } from "llama-cloud-services/reader";
 
 const EXTRACTION_INSTRUCTION = `
-This document is a resume. Extract every visible factual detail faithfully.
+This document may be a resume, CV, portfolio, or project profile. Extract every
+visible factual detail faithfully.
 Preserve headings, names, contact details, job titles, employers, locations,
 dates, bullets, projects, certifications, links, skills, and all numbers.
 Keep the original reading order. Preserve tables as readable rows. Include

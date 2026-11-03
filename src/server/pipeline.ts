@@ -13,6 +13,7 @@ import { fidelityReport } from "./fidelity";
 import { structureWithGroq } from "./groq";
 import { extractWithLlamaParse } from "./llamaparse";
 import { parseWithRules, withIds } from "./rules-parser";
+import { assertResumeGrounded } from "./grounding";
 
 function assignIds(structured: Resume): Resume {
   return {
@@ -66,6 +67,12 @@ export async function parseResume(file: File): Promise<ParsedResume> {
     );
   }
   if (!isResumeLike(source)) {
+    if (kind === "pdf" && source.length < 800) {
+      throw new AppError(
+        "UNREADABLE_FILE",
+        "This PDF appears to be image-based and its text layer is incomplete. Enable LlamaParse OCR or upload a text-based PDF."
+      );
+    }
     throw new AppError("NOT_A_RESUME", "The file does not appear to be a resume.");
   }
 
@@ -80,6 +87,7 @@ export async function parseResume(file: File): Promise<ParsedResume> {
   }
 
   const resume = resumeSchema.parse(assignIds(structured));
+  assertResumeGrounded(resume, source);
   const meaningful =
     resume.contact.name ||
     resume.experience.length ||
