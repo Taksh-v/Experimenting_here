@@ -20,29 +20,33 @@ export async function extractWithLlamaParse(
     process.env.LLAMAPARSE_API_KEY?.trim();
   if (!apiKey) return null;
 
-  const reader = new LlamaParseReader({
-    apiKey,
-    resultType: "text",
-    parsingInstruction: EXTRACTION_INSTRUCTION,
-    doNotCache: true,
-    skipDiagonalText: false,
-    preserve_very_small_text: true,
-    checkInterval: 1,
-    maxCheckInterval: 5,
-    maxTimeout: 120,
-    maxErrorCount: 3,
-    verbose: false,
-    high_res_ocr: true,
-    layout_aware: true,
-    auto_mode_trigger_on_image_in_page: true
-  });
+  const parse = async (resultType: "text" | "markdown") => {
+    const reader = new LlamaParseReader({
+      apiKey,
+      resultType,
+      parsingInstruction: EXTRACTION_INSTRUCTION,
+      doNotCache: true,
+      skipDiagonalText: false,
+      preserve_very_small_text: true,
+      checkInterval: 1,
+      maxCheckInterval: 5,
+      maxTimeout: 120,
+      maxErrorCount: 3,
+      verbose: false,
+      high_res_ocr: true,
+      layout_aware: true,
+      auto_mode_trigger_on_image_in_page: true
+    });
+    const documents = await reader.loadDataAsContent(bytes.slice(), filename);
+    return documents
+      .map((document) => document.text)
+      .filter(Boolean)
+      .join("\n\n")
+      .trim();
+  };
 
-  const documents = await reader.loadDataAsContent(bytes.slice(), filename);
-  const text = documents
-    .map((document) => document.text)
-    .filter(Boolean)
-    .join("\n\n")
-    .trim();
-
-  return text.length >= 40 ? text : null;
+  const text = await parse("text");
+  if (text.length >= 40) return text;
+  const markdown = await parse("markdown");
+  return markdown.length >= 40 ? markdown : null;
 }
