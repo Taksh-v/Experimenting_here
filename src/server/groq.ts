@@ -148,8 +148,9 @@ export function applyGapAnswers(resume: Resume, answers: Answers): Resume {
           .filter(Boolean)
       );
     } else if (kind === "metric") {
-      if (entry.bullets.length) entry.bullets[entry.bullets.length - 1] += ` (${value})`;
-      else entry.bullets.push(value);
+      // The answer belongs to this role, but it is not tied to a particular
+      // existing bullet. Keep it separate to avoid changing the wrong claim.
+      entry.bullets.push(value);
     }
   }
 
@@ -214,7 +215,11 @@ Start bullets with strong action verbs. Do not use "responsible for" or
       },
       {
         role: "user",
-        content: JSON.stringify({ original, answers })
+        content: JSON.stringify({
+          original,
+          answers,
+          verifiedGapAnswers: gapSummary(answers)
+        })
       }
     ]
   });

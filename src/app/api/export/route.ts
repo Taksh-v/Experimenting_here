@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       .replace(/-+/g, "-")
       .slice(0, 60) || "resume";
 
-    return new Response(new Blob([bytes]), {
+    return new Response(buffer, {
       status: 200,
       headers: {
         "Content-Type":
