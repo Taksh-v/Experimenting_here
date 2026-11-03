@@ -70,11 +70,20 @@ function client() {
   return apiKey ? new Groq({ apiKey }) : null;
 }
 
+function providerError(error: unknown): AppError {
+  const value = error as { message?: string; status?: number; error?: { message?: string } };
+  const message = value?.error?.message ?? value?.message ?? "The Groq request failed.";
+  const status = typeof value?.status === "number" ? value.status : 502;
+  return new AppError("PROVIDER_ERROR", "Groq request failed: " + message, status >= 400 && status < 600 ? status : 502);
+}
+
 export async function structureWithGroq(source: string): Promise<Resume | null> {
   const groq = client();
   if (!groq) return null;
 
-  const response = await groq.chat.completions.create({
+  let response;
+  try {
+    response = await groq.chat.completions.create({
     model: MODEL,
     temperature: 0,
     max_completion_tokens: 5000,
@@ -100,7 +109,10 @@ ${SCHEMA_DESCRIPTION}
         content: `Extract this resume faithfully:\n<resume_document>\n${source}\n</resume_document>`
       }
     ]
-  });
+    });
+  } catch (error) {
+    throw providerError(error);
+  }
 
   return resumeSchema.parse(parseJson(response.choices[0]?.message.content ?? null));
 }
@@ -219,7 +231,9 @@ export async function refineWithGroq(
     );
   }
 
-  const response = await groq.chat.completions.create({
+  let response;
+  try {
+    response = await groq.chat.completions.create({
     model: MODEL,
     temperature: 0,
     max_completion_tokens: 3000,
@@ -247,7 +261,10 @@ shorter summary when the source supports stronger experience. Return only JSON.`
         })
       }
     ]
-  });
+    });
+  } catch (error) {
+    throw providerError(error);
+  }
 
   const generated = resumeSchema.parse(
     parseJson(response.choices[0]?.message.content ?? null)
