@@ -47,7 +47,9 @@ function normalizeExtractedText(value: string) {
 
 type PdfTextItem = {
   str: string;
-  transform: number[];
+  transform?: number[];
+  x?: number;
+  y?: number;
   width: number;
   height: number;
   hasEOL?: boolean;
@@ -59,7 +61,9 @@ function isPdfTextItem(value: unknown): value is PdfTextItem {
     value !== null &&
     "str" in value &&
     typeof (value as PdfTextItem).str === "string" &&
-    Array.isArray((value as PdfTextItem).transform)
+    (Array.isArray((value as PdfTextItem).transform) ||
+      (typeof (value as PdfTextItem).x === "number" &&
+        typeof (value as PdfTextItem).y === "number"))
   );
 }
 
@@ -68,8 +72,8 @@ function pageText(values: unknown[]) {
 
   for (const item of values) {
     if (!isPdfTextItem(item)) continue;
-    const x = item.transform[4] ?? 0;
-    const y = item.transform[5] ?? 0;
+    const x = item.x ?? item.transform?.[4] ?? 0;
+    const y = item.y ?? item.transform?.[5] ?? 0;
     let row = rows.find((candidate) => Math.abs(candidate.y - y) <= 2.5);
     if (!row) {
       row = { y, items: [] };
@@ -101,30 +105,34 @@ function pageText(values: unknown[]) {
 
 async function extractPdf(bytes: Uint8Array) {
   try {
-    const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-    const task = pdfjs.getDocument({
-      data: bytes.slice(),
-      useSystemFonts: true,
-      disableFontFace: true,
+    const { extractTextItems, getDocumentProxy } = await import("unpdf");
+    const document = await getDocumentProxy(bytes.slice(), {
+      maxImageSize: 16_777_216
     });
-    const document = await task.promise;
-    if (document.numPages > MAX_PAGES) {
-      await task.destroy();
-      throw new AppError(
-        "INVALID_FILE",
-        `The PDF has more than ${MAX_PAGES} pages.`
-      );
-    }
+    try {
+      if (document.numPages > MAX_PAGES) {
+        throw new AppError(
+          "INVALID_FILE",
+          `The PDF has more than ${MAX_PAGES} pages.`
+        );
+      }
 
-    const pages: string[] = [];
-    for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
-      const page = await document.getPage(pageNumber);
-      const content = await page.getTextContent();
-      pages.push(pageText(content.items));
-      page.cleanup();
+      const extraction = extractTextItems(document);
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(
+          () => reject(new AppError("UNREADABLE_FILE", "PDF reading timed out.")),
+          30_000
+        );
+      });
+      const { items } = await Promise.race([extraction, timeout]).finally(() => {
+        if (timeoutId) clearTimeout(timeoutId);
+      });
+      const pages = items.map((page) => pageText(page));
+      return normalizeExtractedText(pages.join("\n\n"));
+    } finally {
+      await document.cleanup();
     }
-    await task.destroy();
-    return normalizeExtractedText(pages.join("\n\n"));
   } catch (error) {
     if (error instanceof AppError) throw error;
     console.warn("Local PDF extraction failed", {

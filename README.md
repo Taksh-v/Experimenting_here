@@ -10,7 +10,8 @@ an ATS-safe resume.
 2. The server verifies the file signature.
 3. LlamaParse performs OCR and layout-aware extraction when
    `LLAMA_CLOUD_API_KEY` is configured.
-4. If LlamaParse is unavailable or returns too little text, PDF.js or the local
+4. If LlamaParse is unavailable or returns too little text, the serverless
+   PDF.js build from `unpdf` or the local
    DOCX extractor reads the text. DOCX headers and footers are included because
    resumes often place contact details there.
 5. Groq structures the extracted content into a Zod-validated schema. Unknown
@@ -33,6 +34,8 @@ provider-output sanitization, faithful header/footer extraction, and preserving
 source identity fields. No AGPL OpenResume source is copied.
 
 ## Run locally
+
+Node.js 24 is required for the worker-free PDF parser used by Vercel.
 
 ```bash
 cp .env.example .env.local
