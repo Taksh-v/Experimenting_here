@@ -19,13 +19,17 @@ an ATS-safe resume.
 6. A deterministic heading parser is used when Groq is not configured.
 7. A fidelity pass compares source lines with the structured result and flags
    lines that need review.
-8. Refinement can change the headline, skills, summary, and bullets. Employer,
+8. The browser presents an editable review workspace with project editing,
+   missing-information questions, quality scoring, and a polished resume view.
+9. Refinement can change the headline, skills, summary, and bullets. Employer,
    job, date, education, certification, and project identity fields are restored
    from the parsed source after the model call. New unsupported numbers cause
    the result to be rejected.
+10. The reviewed resume can be exported as DOCX or printed to PDF from the
+    browser.
 
 Resume data stays in browser memory for the current flow. There is no database,
-account, download, portfolio, job tracker, or pricing code.
+account, portfolio, job tracker, or pricing code.
 
 The implementation adopts MIT-licensed architectural ideas from
 [Reactive Resume](https://github.com/reactive-resume/reactive-resume) and
