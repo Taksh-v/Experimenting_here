@@ -14,6 +14,7 @@ import { structureWithGroq } from "./groq";
 import { extractWithLlamaParse } from "./llamaparse";
 import { parseWithRules, withIds } from "./rules-parser";
 import { assertResumeGrounded } from "./grounding";
+import { providerErrorMessage } from "./provider-error";
 
 function assignIds(structured: Resume): Resume {
   return {
@@ -58,8 +59,8 @@ export async function parseResume(file: File): Promise<ParsedResume> {
       warnings.push("LlamaParse returned too little text; local extraction was used.");
     }
   } catch (error) {
-    llamaError = error instanceof Error ? error.message : "Unknown LlamaParse error";
-    console.warn("LlamaParse failed; attempting local extraction", {
+    llamaError = providerErrorMessage(error);
+    console.warn("LlamaParse extraction failed", {
       message: llamaError
     });
     warnings.push(
