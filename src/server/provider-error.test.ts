@@ -7,6 +7,8 @@ it("reads plain API error objects thrown by the SDK", () => {
   expect(providerErrorMessage({ detail: "Invalid API key" })).toBe("Invalid API key");
   expect(providerErrorMessage({ detail: [{ loc: ["body", "file"], msg: "Field required", input: "private content" }] }))
     .toBe("body.file: Field required");
+  expect(providerErrorMessage({ status: "FAILED", error_message: "OCR could not read page 2" }))
+    .toBe("OCR could not read page 2");
 });
 
 it("reads Error instances and redacts credentials", () => {

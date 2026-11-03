@@ -10,7 +10,7 @@ export function providerErrorMessage(error: unknown): string {
     seen.add(value);
     if (Array.isArray(value)) return value.map((item) => read(item, depth + 1)).filter(Boolean).join("; ");
     const record = value as Record<string, unknown>;
-    const message = ["detail", "message", "msg", "error", "errors"]
+    const message = ["detail", "message", "error_message", "msg", "error", "errors"]
       .map((key) => read(record[key], depth + 1)).find(Boolean);
     const location = Array.isArray(record.loc)
       ? record.loc.filter((part) => typeof part === "string" || typeof part === "number").join(".")
