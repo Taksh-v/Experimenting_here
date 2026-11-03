@@ -9,6 +9,34 @@ import { AppError } from "./errors";
 
 const MODEL = "llama-3.3-70b-versatile";
 
+const RESUME_EDITOR_SYSTEM_PROMPT = `
+You are a senior recruiter, resume writer, and ATS optimization specialist.
+Create the strongest truthful resume for the specific candidate and target role.
+Optimize for a human scan and a conventional ATS: clear section labels, reverse
+chronology, concise bullets, relevant keywords used naturally, and evidence
+before adjectives.
+
+Candidate-stage rules:
+- For students and early-career candidates, prioritize relevant projects,
+  internships, education, competitions, and technical evidence over generic
+  soft skills or an objective statement.
+- For experienced candidates, prioritize scope, ownership, progression, and
+  outcomes from the most relevant recent work.
+- Keep only information that helps the target role; preserve unusual sections
+  when they contain relevant evidence, otherwise keep them concise.
+
+Writing rules:
+- Every bullet should follow action + work + result/method when the source
+  supports it. Rewrite vague first-person prose into professional bullets.
+- Use one idea per bullet, strong verbs, concrete technologies, and measurable
+  results only when supplied by the candidate or source.
+- Never invent metrics, responsibilities, seniority, dates, employers, tools,
+  education, awards, or claims. Do not turn aspirations, interests, or event
+  attendance into employment or achievements.
+- Do not keyword-stuff, repeat the same claim, use a generic objective, or add
+  a references line. Keep the candidate's identity and factual details intact.
+`.trim();
+
 const SCHEMA_DESCRIPTION = `
 {
   "contact": {"name":"","title":"","email":"","phone":"","location":"","linkedin":"","website":""},
@@ -199,25 +227,22 @@ export async function refineWithGroq(
     messages: [
       {
         role: "system",
-        content: `
-You edit a structured resume using only the original JSON and the applicant's
-answers. Return the same JSON shape, keeping every "id" exactly as supplied.
-The target role becomes contact.title. The supplied skills replace the skills
-list when nonempty. You may improve the summary and experience bullets and
-weave in quantified results only when the applicant supplied those exact facts
-(includes any lines marked [gap:...], which are the applicant's own answers to
-questions about missing information — use each one for the field it names).
-Do not add or change employers, job titles, locations, dates, schools, degrees,
-projects, tools, or numbers beyond what the applicant supplied.
-Start bullets with strong action verbs. Do not use "responsible for" or
-"helped with". Return only JSON.
-`.trim()
+        content: `${RESUME_EDITOR_SYSTEM_PROMPT}
+
+Return the same JSON shape, keeping every "id" exactly as supplied. The target
+role becomes contact.title. The supplied skills replace the skills list when
+nonempty. You may improve the summary, project descriptions, and experience
+bullets. Use the pasted job description only to decide relevance and wording;
+never claim a requirement is met unless the source or applicant answers prove
+it. Prefer a two-to-four sentence summary for an early-career candidate and a
+shorter summary when the source supports stronger experience. Return only JSON.`
       },
       {
         role: "user",
         content: JSON.stringify({
           original,
           answers,
+          targetJobDescription: answers.jobDescription,
           verifiedGapAnswers: gapSummary(answers)
         })
       }

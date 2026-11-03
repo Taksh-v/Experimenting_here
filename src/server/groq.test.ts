@@ -4,6 +4,7 @@ import { applyGapAnswers } from "./groq";
 
 const baseAnswers: Answers = {
   targetRole: "Platform Engineer",
+  jobDescription: "",
   quantifiedResults: "",
   skills: "",
   carefulContext: "",

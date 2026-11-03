@@ -22,6 +22,7 @@ type Screen = "upload" | "loading" | "review" | "questions" | "result" | "error"
 
 const initialAnswers: Answers = {
   targetRole: "",
+  jobDescription: "",
   quantifiedResults: "",
   skills: "",
   carefulContext: "",
@@ -727,6 +728,18 @@ export default function Home() {
             value={answers.targetRole}
             onChange={(event) =>
               setAnswers({ ...answers, targetRole: event.target.value })
+            }
+          />
+        </label>
+
+        <label>
+          Job description (optional, paste the role you are applying for)
+          <textarea
+            rows={6}
+            placeholder="Paste the job description so the resume can prioritize the right evidence and terminology."
+            value={answers.jobDescription}
+            onChange={(event) =>
+              setAnswers({ ...answers, jobDescription: event.target.value })
             }
           />
         </label>

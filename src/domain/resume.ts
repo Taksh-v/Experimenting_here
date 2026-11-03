@@ -102,6 +102,7 @@ export const emptyResume: Resume = {
 
 export const answersSchema = z.object({
   targetRole: z.string().trim().min(1).max(200),
+  jobDescription: z.string().trim().max(12_000).default(""),
   quantifiedResults: z.string().trim().max(5_000),
   skills: z.string().trim().max(3_000),
   carefulContext: z.string().trim().max(3_000),
