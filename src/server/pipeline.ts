@@ -47,6 +47,10 @@ export async function parseResume(file: File): Promise<ParsedResume> {
 
   let source: string | null = null;
   let usedLlamaParse = false;
+  const llamaConfigured = Boolean(
+    process.env.LLAMA_CLOUD_API_KEY?.trim() ||
+      process.env.LLAMAPARSE_API_KEY?.trim()
+  );
   try {
     source = await extractWithLlamaParse(bytes, file.name);
     usedLlamaParse = Boolean(source);
@@ -58,9 +62,27 @@ export async function parseResume(file: File): Promise<ParsedResume> {
     console.warn("LlamaParse failed; attempting local extraction", {
       message: llamaError
     });
-    warnings.push("LlamaParse was unavailable; local extraction was used.");
+    warnings.push(
+      llamaConfigured
+        ? "LlamaParse was unavailable."
+        : "LlamaParse was unavailable; local extraction was used."
+    );
+    if (kind === "pdf" && llamaConfigured) {
+      throw new AppError(
+        "PROVIDER_ERROR",
+        "LlamaParse failed while parsing this PDF: " + llamaError,
+        502
+      );
+    }
   }
 
+  if (!source && kind === "pdf" && llamaConfigured) {
+    throw new AppError(
+      "PROVIDER_ERROR",
+      "LlamaParse returned no text for this PDF. Check the LlamaParse API key, quota, and OCR settings.",
+      502
+    );
+  }
   if (!source) source = await extractLocalText(kind, bytes);
   if (source.length > 300_000) {
     throw new AppError(
