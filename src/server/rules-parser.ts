@@ -1,5 +1,9 @@
 import { emptyResume, resumeSchema, type Resume } from "@/domain/resume";
 
+export function withIds<T extends { id?: string }>(items: T[]): T[] {
+  return items.map((item) => (item.id ? item : { ...item, id: crypto.randomUUID() }));
+}
+
 type SectionKey =
   | "summary"
   | "skills"

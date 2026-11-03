@@ -1,6 +1,7 @@
 import {
   type ParsedResume,
   type ParseEngine,
+  type Resume,
   resumeSchema
 } from "@/domain/resume";
 import { AppError } from "./errors";
@@ -11,7 +12,16 @@ import {
 import { fidelityReport } from "./fidelity";
 import { structureWithGroq } from "./groq";
 import { extractWithLlamaParse } from "./llamaparse";
-import { parseWithRules } from "./rules-parser";
+import { parseWithRules, withIds } from "./rules-parser";
+
+function assignIds(structured: Resume): Resume {
+  return {
+    ...structured,
+    experience: withIds(structured.experience),
+    education: withIds(structured.education),
+    projects: withIds(structured.projects)
+  };
+}
 
 function isResumeLike(source: string) {
   const normalized = source.toLowerCase();
@@ -69,7 +79,7 @@ export async function parseResume(file: File): Promise<ParsedResume> {
     warnings.push("Groq is not configured; deterministic heading rules were used.");
   }
 
-  const resume = resumeSchema.parse(structured);
+  const resume = resumeSchema.parse(assignIds(structured));
   const meaningful =
     resume.contact.name ||
     resume.experience.length ||
