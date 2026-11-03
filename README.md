@@ -8,12 +8,13 @@ an ATS-safe resume.
 
 1. The browser validates the file type and 8 MB limit.
 2. The server verifies the file signature.
-3. LlamaParse performs OCR and layout-aware extraction when
-   `LLAMA_CLOUD_API_KEY` is configured.
-4. If LlamaParse is unavailable or returns too little text, the serverless
-   PDF.js build from `unpdf` or the local
-   DOCX extractor reads the text. DOCX headers and footers are included because
-   resumes often place contact details there.
+3. PDF uploads require LlamaParse with `LLAMA_CLOUD_API_KEY` (or
+   `LLAMAPARSE_API_KEY`). Native multipart upload submits one job; bounded
+   polling waits for completion, then retrieves Markdown or text from that same
+   job. OCR is enabled. Provider failures stop processing with an error.
+4. DOCX uploads use the local extractor, including headers and footers because
+   resumes often place contact details there. PDFs never silently fall back to
+   their potentially incomplete embedded text layer.
 5. Groq structures the extracted content into a Zod-validated schema. Unknown
    headings are kept in `additionalSections` rather than discarded.
 6. A deterministic heading parser is used when Groq is not configured.

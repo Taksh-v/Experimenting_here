@@ -1,53 +1,56 @@
-import { LlamaParseReader } from "llama-cloud-services/reader";
+import { AppError } from "./errors";
+import { providerErrorMessage } from "./provider-error";
 
-const EXTRACTION_INSTRUCTION = `
-This document may be a resume, CV, portfolio, or project profile. Extract every
-visible factual detail faithfully.
-Preserve headings, names, contact details, job titles, employers, locations,
-dates, bullets, projects, certifications, links, skills, and all numbers.
-Keep the original reading order. Preserve tables as readable rows. Include
-headers and footers when they contain resume information. Do not summarize,
-rewrite, infer, correct, or invent anything. Ignore only decorative elements,
-repeated page furniture, and obvious OCR noise.
-`.trim();
+const BASE_URL = "https://api.cloud.llamaindex.ai/api/parsing";
 
-export async function extractWithLlamaParse(
-  bytes: Uint8Array,
-  filename: string
-): Promise<string | null> {
-  const apiKey =
-    process.env.LLAMA_CLOUD_API_KEY?.trim() ||
-    process.env.LLAMAPARSE_API_KEY?.trim();
-  if (!apiKey) return null;
+type Json = Record<string, unknown>;
 
-  const parse = async (resultType: "text" | "markdown") => {
-    const reader = new LlamaParseReader({
-      apiKey,
-      ignoreErrors: false,
-      resultType,
-      parsingInstruction: EXTRACTION_INSTRUCTION,
-      doNotCache: true,
-      skipDiagonalText: false,
-      preserve_very_small_text: true,
-      checkInterval: 1,
-      maxCheckInterval: 5,
-      maxTimeout: 120,
-      maxErrorCount: 3,
-      verbose: false,
-      high_res_ocr: true,
-      layout_aware: true,
-      auto_mode_trigger_on_image_in_page: true
+export async function extractWithLlamaParse(bytes: Uint8Array, filename: string): Promise<string> {
+  const apiKey = process.env.LLAMA_CLOUD_API_KEY?.trim() || process.env.LLAMAPARSE_API_KEY?.trim();
+  if (!apiKey) throw new AppError("PROVIDER_ERROR", "LlamaParse is not configured. Set LLAMA_CLOUD_API_KEY on the server.", 503);
+  const signal = AbortSignal.timeout(110_000);
+  async function request(path: string, init: RequestInit = {}): Promise<Json> {
+    const response = await fetch(BASE_URL + path, {
+      ...init, headers: { Authorization: "Bearer " + apiKey }, signal, cache: "no-store"
     });
-    const documents = await reader.loadDataAsContent(bytes.slice(), filename);
-    return documents
-      .map((document) => document.text)
-      .filter(Boolean)
-      .join("\n\n")
-      .trim();
-  };
-
-  const text = await parse("text");
-  if (text.length >= 40) return text;
-  const markdown = await parse("markdown");
-  return markdown.length >= 40 ? markdown : null;
+    const raw = await response.text();
+    let body: unknown;
+    try { body = JSON.parse(raw); } catch { body = null; }
+    if (!response.ok) throw new AppError("PROVIDER_ERROR", "LlamaParse HTTP " + response.status + ": " + providerErrorMessage(body), 502);
+    if (!body || typeof body !== "object" || Array.isArray(body)) throw new AppError("PROVIDER_ERROR", "LlamaParse returned an invalid response.", 502);
+    return body as Json;
+  }
+  try {
+    const form = new FormData();
+    form.append("file", new Blob([bytes.slice().buffer], {
+      type: filename.toLowerCase().endsWith(".pdf") ? "application/pdf" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    }), filename);
+    form.append("language", "en");
+    form.append("disable_ocr", "false");
+    const upload = await request("/upload", { method: "POST", body: form });
+    if (typeof upload.id !== "string" || !upload.id) throw new AppError("PROVIDER_ERROR", "LlamaParse did not return a parsing job ID.", 502);
+    const path = "/job/" + encodeURIComponent(upload.id);
+    for (;;) {
+      const job = await request(path);
+      if (job.status === "SUCCESS") break;
+      if (!["PENDING", "QUEUED", "PROCESSING"].includes(String(job.status))) throw new AppError("PROVIDER_ERROR", "LlamaParse job failed: " + providerErrorMessage(job), 502);
+      await new Promise<void>((resolve, reject) => {
+        const abort = () => { clearTimeout(timer); reject(signal.reason); };
+        const timer = setTimeout(() => { signal.removeEventListener("abort", abort); resolve(); }, 1000);
+        if (signal.aborted) abort();
+        else signal.addEventListener("abort", abort, { once: true });
+      });
+    }
+    // Read alternate output from the same job; never upload twice.
+    for (const format of ["markdown", "text"]) {
+      const result = await request(path + "/result/" + format);
+      const text = typeof result[format] === "string" ? result[format].trim() : "";
+      if (text.length >= 40) return text;
+    }
+    throw new AppError("UNREADABLE_FILE", "LlamaParse completed but extracted too little readable text. Review the document in Llama Cloud.", 422);
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    if (signal.aborted) throw new AppError("PROVIDER_ERROR", "LlamaParse exceeded the extraction time limit. Please retry.", 504);
+    throw new AppError("PROVIDER_ERROR", "LlamaParse connection failed: " + providerErrorMessage(error), 502);
+  }
 }

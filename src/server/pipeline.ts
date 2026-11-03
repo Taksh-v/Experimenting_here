@@ -14,7 +14,6 @@ import { structureWithGroq } from "./groq";
 import { extractWithLlamaParse } from "./llamaparse";
 import { parseWithRules, withIds } from "./rules-parser";
 import { assertResumeGrounded } from "./grounding";
-import { providerErrorMessage } from "./provider-error";
 
 function assignIds(structured: Resume): Resume {
   return {
@@ -44,47 +43,10 @@ export async function parseResume(file: File): Promise<ParsedResume> {
   const bytes = new Uint8Array(await file.arrayBuffer());
   const kind = validateUpload(file, bytes);
   const warnings: string[] = [];
-  let llamaError = "";
-
-  let source: string | null = null;
-  let usedLlamaParse = false;
-  const llamaConfigured = Boolean(
-    process.env.LLAMA_CLOUD_API_KEY?.trim() ||
-      process.env.LLAMAPARSE_API_KEY?.trim()
-  );
-  try {
-    source = await extractWithLlamaParse(bytes, file.name);
-    usedLlamaParse = Boolean(source);
-    if (!source && process.env.LLAMA_CLOUD_API_KEY) {
-      warnings.push("LlamaParse returned too little text; local extraction was used.");
-    }
-  } catch (error) {
-    llamaError = providerErrorMessage(error);
-    console.warn("LlamaParse extraction failed", {
-      message: llamaError
-    });
-    warnings.push(
-      llamaConfigured
-        ? "LlamaParse was unavailable."
-        : "LlamaParse was unavailable; local extraction was used."
-    );
-    if (kind === "pdf" && llamaConfigured) {
-      throw new AppError(
-        "PROVIDER_ERROR",
-        "LlamaParse failed while parsing this PDF: " + llamaError,
-        502
-      );
-    }
-  }
-
-  if (!source && kind === "pdf" && llamaConfigured) {
-    throw new AppError(
-      "PROVIDER_ERROR",
-      "LlamaParse returned no text for this PDF. Check the LlamaParse API key, quota, and OCR settings.",
-      502
-    );
-  }
-  if (!source) source = await extractLocalText(kind, bytes);
+  const usedLlamaParse = kind === "pdf";
+  const source = usedLlamaParse
+    ? await extractWithLlamaParse(bytes, file.name)
+    : await extractLocalText(kind, bytes);
   if (source.length > 300_000) {
     throw new AppError(
       "INVALID_FILE",
@@ -92,21 +54,6 @@ export async function parseResume(file: File): Promise<ParsedResume> {
     );
   }
   if (!isResumeLike(source)) {
-    if (kind === "pdf" && source.length < 800) {
-      if (process.env.LLAMA_CLOUD_API_KEY?.trim() || process.env.LLAMAPARSE_API_KEY?.trim()) {
-        throw new AppError(
-          "PROVIDER_ERROR",
-          llamaError
-            ? "LlamaParse could not read this PDF: " + llamaError
-            : "LlamaParse returned incomplete text for this image-based PDF. Check the LlamaParse API key, quota, and Vercel Production environment.",
-          502
-        );
-      }
-      throw new AppError(
-        "UNREADABLE_FILE",
-        "This PDF appears to be image-based and its text layer is incomplete. Enable LlamaParse OCR or upload a text-based PDF."
-      );
-    }
     warnings.push(
       "The document did not match common resume headings; preserving extracted content for review."
     );
