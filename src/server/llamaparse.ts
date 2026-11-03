@@ -23,6 +23,7 @@ export async function extractWithLlamaParse(
   const parse = async (resultType: "text" | "markdown") => {
     const reader = new LlamaParseReader({
       apiKey,
+      ignoreErrors: false,
       resultType,
       parsingInstruction: EXTRACTION_INSTRUCTION,
       doNotCache: true,
