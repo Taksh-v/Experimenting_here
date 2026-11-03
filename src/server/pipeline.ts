@@ -43,6 +43,7 @@ export async function parseResume(file: File): Promise<ParsedResume> {
   const bytes = new Uint8Array(await file.arrayBuffer());
   const kind = validateUpload(file, bytes);
   const warnings: string[] = [];
+  let llamaError = "";
 
   let source: string | null = null;
   let usedLlamaParse = false;
@@ -53,8 +54,9 @@ export async function parseResume(file: File): Promise<ParsedResume> {
       warnings.push("LlamaParse returned too little text; local extraction was used.");
     }
   } catch (error) {
+    llamaError = error instanceof Error ? error.message : "Unknown LlamaParse error";
     console.warn("LlamaParse failed; attempting local extraction", {
-      message: error instanceof Error ? error.message : "Unknown provider error"
+      message: llamaError
     });
     warnings.push("LlamaParse was unavailable; local extraction was used.");
   }
@@ -68,6 +70,15 @@ export async function parseResume(file: File): Promise<ParsedResume> {
   }
   if (!isResumeLike(source)) {
     if (kind === "pdf" && source.length < 800) {
+      if (process.env.LLAMA_CLOUD_API_KEY?.trim() || process.env.LLAMAPARSE_API_KEY?.trim()) {
+        throw new AppError(
+          "PROVIDER_ERROR",
+          llamaError
+            ? "LlamaParse could not read this PDF: " + llamaError
+            : "LlamaParse returned incomplete text for this image-based PDF. Check the LlamaParse API key, quota, and Vercel Production environment.",
+          502
+        );
+      }
       throw new AppError(
         "UNREADABLE_FILE",
         "This PDF appears to be image-based and its text layer is incomplete. Enable LlamaParse OCR or upload a text-based PDF."

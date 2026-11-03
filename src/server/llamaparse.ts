@@ -15,7 +15,9 @@ export async function extractWithLlamaParse(
   bytes: Uint8Array,
   filename: string
 ): Promise<string | null> {
-  const apiKey = process.env.LLAMA_CLOUD_API_KEY?.trim();
+  const apiKey =
+    process.env.LLAMA_CLOUD_API_KEY?.trim() ||
+    process.env.LLAMAPARSE_API_KEY?.trim();
   if (!apiKey) return null;
 
   const reader = new LlamaParseReader({
@@ -29,7 +31,10 @@ export async function extractWithLlamaParse(
     maxCheckInterval: 5,
     maxTimeout: 120,
     maxErrorCount: 3,
-    verbose: false
+    verbose: false,
+    high_res_ocr: true,
+    layout_aware: true,
+    auto_mode_trigger_on_image_in_page: true
   });
 
   const documents = await reader.loadDataAsContent(bytes.slice(), filename);
