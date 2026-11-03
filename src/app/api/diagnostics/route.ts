@@ -18,8 +18,10 @@ export async function GET() {
         process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim()
     ),
     rateLimitConfigured: Boolean(
-      process.env.UPSTASH_REDIS_REST_URL?.trim() &&
-        process.env.UPSTASH_REDIS_REST_TOKEN?.trim() &&
+      (process.env.UPSTASH_REDIS_REST_URL?.trim() ||
+        process.env.KV_REST_API_URL?.trim()) &&
+        (process.env.UPSTASH_REDIS_REST_TOKEN?.trim() ||
+          process.env.KV_REST_API_TOKEN?.trim()) &&
         process.env.RATE_LIMIT_SALT?.trim()
     ),
     runtime: process.version

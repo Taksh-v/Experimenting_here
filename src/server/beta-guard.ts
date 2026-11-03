@@ -15,6 +15,16 @@ function required(name: string) {
   return value ?? "";
 }
 
+function requiredOne(names: string[], label: string) {
+  const value = names
+    .map((name) => process.env[name]?.trim())
+    .find((candidate): candidate is string => Boolean(candidate));
+  if (!value && process.env.NODE_ENV === "production") {
+    throw new AppError("PROVIDER_ERROR", label + " is not configured.", 503);
+  }
+  return value ?? "";
+}
+
 async function verifyTurnstile(request: Request, token: string | undefined) {
   const secret = required("TURNSTILE_SECRET_KEY");
   if (!secret && process.env.NODE_ENV !== "production") return;
@@ -40,8 +50,14 @@ function dailyIpKey(request: Request) {
 }
 
 async function increment(keys: string[]) {
-  const url = required("UPSTASH_REDIS_REST_URL");
-  const token = required("UPSTASH_REDIS_REST_TOKEN");
+  const url = requiredOne(
+    ["UPSTASH_REDIS_REST_URL", "KV_REST_API_URL"],
+    "Upstash Redis REST URL"
+  );
+  const token = requiredOne(
+    ["UPSTASH_REDIS_REST_TOKEN", "KV_REST_API_TOKEN"],
+    "Upstash Redis REST token"
+  );
   if ((!url || !token) && process.env.NODE_ENV !== "production") {
     return keys.map(() => 1);
   }
