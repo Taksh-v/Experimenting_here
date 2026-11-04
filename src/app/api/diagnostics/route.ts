@@ -24,6 +24,8 @@ export async function GET() {
           process.env.KV_REST_API_TOKEN?.trim()) &&
         process.env.RATE_LIMIT_SALT?.trim()
     ),
+    rateLimitEnabled:
+      process.env.RATE_LIMIT_ENABLED?.trim().toLowerCase() === "true",
     runtime: process.version
   });
 }

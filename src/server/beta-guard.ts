@@ -90,6 +90,9 @@ export async function guardProviderRequest(request: Request, options: GuardOptio
   if (options.action === "resume_start") {
     await verifyTurnstile(request, options.turnstileToken);
   }
+  if (process.env.RATE_LIMIT_ENABLED?.trim().toLowerCase() !== "true") {
+    return;
+  }
   const prefix = "evolving-resume:" + new Date().toISOString().slice(0, 10);
   const keys =
     options.action === "resume_start"
