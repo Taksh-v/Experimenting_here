@@ -25,6 +25,11 @@ function requiredOne(names: string[], label: string) {
   return value ?? "";
 }
 
+function limit(name: string, fallback: number) {
+  const configured = Number(process.env[name]);
+  return Number.isSafeInteger(configured) && configured > 0 ? configured : fallback;
+}
+
 async function verifyTurnstile(request: Request, token: string | undefined) {
   const secret = required("TURNSTILE_SECRET_KEY");
   if (!secret && process.env.NODE_ENV !== "production") return;
@@ -100,22 +105,25 @@ export async function guardProviderRequest(request: Request, options: GuardOptio
         ];
   const counts = await increment(keys);
   const [globalCount = 0, ipCount = 0, sessionCount = 0] = counts;
-  const globalLimit = Number(process.env.BETA_DAILY_RESUME_LIMIT ?? 25);
+  const globalLimit = limit("BETA_DAILY_RESUME_LIMIT", 25);
   if (options.action === "resume_start" && globalCount > globalLimit) {
     throw new AppError("PROVIDER_ERROR", "The free beta has reached today’s capacity.", 429);
   }
-  if (options.action === "resume_start" && ipCount > 3) {
+  if (
+    options.action === "resume_start" &&
+    ipCount > limit("BETA_DAILY_IP_RESUME_LIMIT", 10)
+  ) {
     throw new AppError("INVALID_REQUEST", "This device has reached today’s resume limit.", 429);
   }
-  if (options.action === "groq" && sessionCount > 8) {
+  if (options.action === "groq" && sessionCount > limit("BETA_SESSION_GROQ_LIMIT", 8)) {
     throw new AppError("INVALID_REQUEST", "This session has reached its writing limit.", 429);
   }
-  if (options.action === "groq" && ipCount > 24) {
+  if (options.action === "groq" && ipCount > limit("BETA_DAILY_IP_GROQ_LIMIT", 24)) {
     throw new AppError("INVALID_REQUEST", "This device has reached today’s AI limit.", 429);
   }
   if (
     options.action === "groq" &&
-    globalCount > Number(process.env.BETA_DAILY_GROQ_LIMIT ?? 200)
+    globalCount > limit("BETA_DAILY_GROQ_LIMIT", 200)
   ) {
     throw new AppError("PROVIDER_ERROR", "The free beta has reached today’s AI capacity.", 429);
   }
