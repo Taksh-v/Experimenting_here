@@ -4,7 +4,13 @@ import { factSchema, type Fact, type Goal, type SourceSegment, type VerifiedBull
 import { AppError } from "./errors";
 import { providerErrorMessage } from "./provider-error";
 
-const MODEL = process.env.GROQ_MODEL?.trim() || "llama-3.1-8b-instant";
+function groqModel() {
+  const model = process.env.GROQ_MODEL?.trim();
+  if (!model) {
+    throw new AppError("PROVIDER_ERROR", "GROQ_MODEL is not configured.", 503);
+  }
+  return model;
+}
 
 function groq() {
   const key = process.env.GROQ_API_KEY?.trim();
@@ -19,7 +25,7 @@ function parseJson(content: string | null) {
 async function complete(system: string, payload: unknown, maxTokens = 5000) {
   try {
     const response = await groq().chat.completions.create({
-      model: MODEL, temperature: 0, max_completion_tokens: maxTokens,
+      model: groqModel(), temperature: 0, max_completion_tokens: maxTokens,
       response_format: { type: "json_object" },
       messages: [{ role: "system", content: system }, { role: "user", content: JSON.stringify(payload) }]
     });

@@ -9,6 +9,7 @@ export async function GET() {
         process.env.LLAMAPARSE_API_KEY?.trim()
     ),
     groqConfigured: Boolean(process.env.GROQ_API_KEY?.trim()),
+    groqModel: process.env.GROQ_MODEL?.trim() || null,
     jobTokensConfigured: Boolean(
       process.env.JOB_TOKEN_SECRET?.trim() &&
         process.env.JOB_TOKEN_SECRET.trim().length >= 32

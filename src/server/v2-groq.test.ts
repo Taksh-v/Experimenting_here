@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Fact } from "@/domain/v2";
 
 const mocks = vi.hoisted(() => ({ create: vi.fn() }));
@@ -9,6 +9,8 @@ vi.mock("groq-sdk", () => ({
 }));
 
 import { draftVerifiedBullets, structureFacts } from "./v2-groq";
+
+beforeEach(() => vi.stubEnv("GROQ_MODEL", "test-model"));
 
 function fact(fields: Fact["fields"], originalText: string): Fact {
   return {
