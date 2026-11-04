@@ -73,6 +73,34 @@ describe("verified bullet writing", () => {
 });
 
 describe("source-grounded fact construction", () => {
+  it("retries once when Groq returns facts with the wrong schema", async () => {
+    vi.stubEnv("GROQ_API_KEY", "test-key");
+    mocks.create
+      .mockResolvedValueOnce({
+        choices: [{ message: { content: JSON.stringify({ facts: [{ name: "Taksh" }] }) } }]
+      })
+      .mockResolvedValueOnce({
+        choices: [{ message: { content: JSON.stringify({
+          facts: [{
+            type: "contact",
+            fields: { name: "Taksh Vadaliya" },
+            originalText: "Taksh Vadaliya",
+            sourceRefs: [{ segmentId: "s1", quote: "Taksh Vadaliya" }],
+            uncertaintyReasons: [],
+            involvement: "unknown",
+            outcome: "unknown"
+          }]
+        }) } }]
+      });
+
+    const result = await structureFacts([
+      { id: "s1", block: 0, reader: "llamaparse", text: "Taksh Vadaliya", order: 0, kind: "line" }
+    ]);
+
+    expect(mocks.create).toHaveBeenCalledTimes(2);
+    expect(result[0]).toMatchObject({ type: "contact", fields: { name: "Taksh Vadaliya" } });
+  });
+
   it("keeps valid facts and exposes unsupported source as unplaced", async () => {
     vi.stubEnv("GROQ_API_KEY", "test-key");
     mocks.create.mockResolvedValueOnce({

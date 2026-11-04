@@ -10,7 +10,7 @@ export const maxDuration = 30;
 
 const bodySchema = z.object({
   sessionId: z.string().uuid(),
-  segments: z.array(sourceSegmentSchema).min(1).max(300)
+  segments: z.array(sourceSegmentSchema).min(1).max(1_000)
 });
 
 export async function POST(request: Request) {
